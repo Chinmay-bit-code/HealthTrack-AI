@@ -1,0 +1,324 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — HealthTrack AI{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Welcome Banner -->
+<div class="welcome-banner mb-4">
+  <div class="welcome-text">
+    <h2>Good {% now "G" as h %}{% if h < 12 %}Morning{% elif h < 17 %}Afternoon{% else %}Evening{% endif %}, {{ request.user.first_name|default:request.user.username }}! 👋</h2>
+    <p>{{ today|date:"l, F j, Y" }} &nbsp;·&nbsp;
+      {% if streak > 0 %}
+        <span class="streak-badge"><i class="fa-solid fa-fire"></i> {{ streak }}-day streak!</span>
+      {% else %}
+        Log today to start your streak!
+      {% endif %}
+    </p>
+  </div>
+  {% if not today_metric %}
+    <a href="{% url 'log_metrics' %}" class="btn btn-primary btn-log-now">
+      <i class="fa-solid fa-plus-circle me-2"></i>Log Today's Metrics
+    </a>
+  {% else %}
+    <span class="logged-badge"><i class="fa-solid fa-check-circle me-1"></i>Today Logged</span>
+  {% endif %}
+</div>
+
+<!-- Metric Cards -->
+<div class="metrics-grid mb-4">
+
+  <div class="metric-card mc-steps">
+    <div class="mc-top">
+      <div class="mc-icon"><i class="fa-solid fa-person-walking"></i></div>
+      {% if today_metric and today_metric.steps %}<span class="mc-pct-badge">{{ today_metric.steps_goal_pct }}%</span>{% endif %}
+    </div>
+    <div class="mc-label">Steps Today</div>
+    <div class="mc-value">{% if today_metric and today_metric.steps %}{{ today_metric.steps|floatformat:0 }}{% else %}—{% endif %}</div>
+    <div class="mc-sub">Goal: {{ profile.target_steps|default:"10,000" }}</div>
+    {% if today_metric and today_metric.steps %}
+    <div class="mc-progress-track"><div class="mc-progress-fill" style="width:{{ today_metric.steps_goal_pct }}%"></div></div>
+    {% endif %}
+  </div>
+
+  <div class="metric-card mc-heart">
+    <div class="mc-top">
+      <div class="mc-icon"><i class="fa-solid fa-heart-pulse"></i></div>
+      {% if today_metric and today_metric.heart_rate %}<span class="mc-pct-badge">{{ today_metric.heart_rate_zone }}</span>{% endif %}
+    </div>
+    <div class="mc-label">Heart Rate</div>
+    <div class="mc-value">
+      {% if today_metric and today_metric.heart_rate %}{{ today_metric.heart_rate }} <small>bpm</small>
+      {% elif latest_metric and latest_metric.heart_rate %}{{ latest_metric.heart_rate }} <small>bpm</small>
+      {% else %}—{% endif %}
+    </div>
+    <div class="mc-sub">{% if today_metric and today_metric.heart_rate %}{{ today_metric.heart_rate_zone }}{% elif latest_metric and latest_metric.heart_rate %}{{ latest_metric.heart_rate_zone }}{% else %}No data{% endif %}</div>
+  </div>
+
+  <div class="metric-card mc-sleep">
+    <div class="mc-top">
+      <div class="mc-icon"><i class="fa-solid fa-moon"></i></div>
+      {% if today_metric and today_metric.sleep_hours %}<span class="mc-pct-badge">{{ today_metric.sleep_quality }}</span>{% endif %}
+    </div>
+    <div class="mc-label">Sleep</div>
+    <div class="mc-value">
+      {% if today_metric and today_metric.sleep_hours %}{{ today_metric.sleep_hours }} <small>hrs</small>
+      {% elif latest_metric and latest_metric.sleep_hours %}{{ latest_metric.sleep_hours }} <small>hrs</small>
+      {% else %}—{% endif %}
+    </div>
+    <div class="mc-sub">Target: {{ profile.target_sleep_hours|default:"8" }} hrs</div>
+  </div>
+
+  <div class="metric-card mc-water">
+    <div class="mc-top">
+      <div class="mc-icon"><i class="fa-solid fa-droplet"></i></div>
+    </div>
+    <div class="mc-label">Water Intake</div>
+    <div class="mc-value">{% if today_metric and today_metric.water_liters %}{{ today_metric.water_liters }} <small>L</small>{% else %}—{% endif %}</div>
+    <div class="mc-sub">Goal: {{ profile.target_water_liters|default:"2.5" }}L</div>
+    {% if today_metric and today_metric.water_liters %}
+    <div class="mc-progress-track"><div class="mc-progress-fill" style="width:{% widthratio today_metric.water_liters profile.target_water_liters 100 %}%"></div></div>
+    {% endif %}
+  </div>
+
+  <div class="metric-card mc-calories">
+    <div class="mc-top">
+      <div class="mc-icon"><i class="fa-solid fa-fire-flame-curved"></i></div>
+    </div>
+    <div class="mc-label">Calories In</div>
+    <div class="mc-value">{% if today_metric and today_metric.calories_intake %}{{ today_metric.calories_intake }}{% else %}—{% endif %}</div>
+    <div class="mc-sub">Target: {{ profile.target_calories|default:"2000" }} kcal</div>
+    {% if today_metric and today_metric.calories_intake %}
+    <div class="mc-progress-track"><div class="mc-progress-fill" style="width:{% widthratio today_metric.calories_intake profile.target_calories 100 %}%"></div></div>
+    {% endif %}
+  </div>
+
+  <div class="metric-card mc-weight">
+    <div class="mc-top">
+      <div class="mc-icon"><i class="fa-solid fa-weight-scale"></i></div>
+      {% if profile.bmi %}<span class="mc-pct-badge">{{ profile.bmi_category }}</span>{% endif %}
+    </div>
+    <div class="mc-label">Weight</div>
+    <div class="mc-value">{% if latest_metric and latest_metric.weight %}{{ latest_metric.weight }} <small>kg</small>{% else %}—{% endif %}</div>
+    <div class="mc-sub">{% if profile.bmi %}BMI {{ profile.bmi }}{% else %}Set height in profile{% endif %}</div>
+  </div>
+
+</div>
+
+<!-- Charts Row -->
+<div class="row g-4 mb-4">
+  <div class="col-lg-8">
+    <div class="card-modern p-4">
+      <div class="chart-header">
+        <h6 class="chart-title"><i class="fa-solid fa-person-walking me-2 text-success"></i>Steps & Activity (14 days)</h6>
+        <div class="chart-tabs">
+          <button class="chart-tab active" onclick="switchChart(this, 'steps')">Steps</button>
+          <button class="chart-tab" onclick="switchChart(this, 'calories')">Calories</button>
+          <button class="chart-tab" onclick="switchChart(this, 'water')">Water</button>
+        </div>
+      </div>
+      <canvas id="stepsChart" height="120"></canvas>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card-modern p-4 h-100">
+      <h6 class="chart-title mb-3"><i class="fa-solid fa-moon me-2 text-info"></i>Sleep Trend</h6>
+      <canvas id="sleepChart" height="160"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Weight Chart + Stats Row -->
+<div class="row g-4 mb-4">
+  <div class="col-lg-5">
+    <div class="card-modern p-4">
+      <h6 class="chart-title mb-3"><i class="fa-solid fa-weight-scale me-2 text-warning"></i>Weight Trend</h6>
+      <canvas id="weightChart" height="140"></canvas>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card-modern p-4 h-100">
+      <h6 class="chart-title mb-3"><i class="fa-solid fa-chart-bar me-2 text-primary"></i>Weekly Summary</h6>
+      <div class="weekly-stats-grid">
+        <div class="ws-item">
+          <div class="ws-icon ws-steps"><i class="fa-solid fa-person-walking"></i></div>
+          <div class="ws-data">
+            <div class="ws-val">{{ weekly_stats.avg_steps|floatformat:0 }}</div>
+            <div class="ws-label">Avg Steps/Day</div>
+          </div>
+        </div>
+        <div class="ws-item">
+          <div class="ws-icon ws-sleep"><i class="fa-solid fa-moon"></i></div>
+          <div class="ws-data">
+            <div class="ws-val">{{ weekly_stats.avg_sleep }}h</div>
+            <div class="ws-label">Avg Sleep</div>
+          </div>
+        </div>
+        <div class="ws-item">
+          <div class="ws-icon ws-water"><i class="fa-solid fa-droplet"></i></div>
+          <div class="ws-data">
+            <div class="ws-val">{{ weekly_stats.avg_water }}L</div>
+            <div class="ws-label">Avg Water</div>
+          </div>
+        </div>
+        <div class="ws-item">
+          <div class="ws-icon ws-hr"><i class="fa-solid fa-heart-pulse"></i></div>
+          <div class="ws-data">
+            <div class="ws-val">{% if weekly_stats.avg_hr %}{{ weekly_stats.avg_hr }} bpm{% else %}—{% endif %}</div>
+            <div class="ws-label">Avg Heart Rate</div>
+          </div>
+        </div>
+        <div class="ws-item">
+          <div class="ws-icon ws-fire"><i class="fa-solid fa-fire"></i></div>
+          <div class="ws-data">
+            <div class="ws-val">{{ weekly_stats.total_calories_burned }}</div>
+            <div class="ws-label">Kcal Burned (week)</div>
+          </div>
+        </div>
+        <div class="ws-item">
+          <div class="ws-icon ws-logs"><i class="fa-solid fa-clipboard-list"></i></div>
+          <div class="ws-data">
+            <div class="ws-val">{{ total_logs }}</div>
+            <div class="ws-label">Total Logs</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Goals -->
+{% if goals %}
+<div class="card-modern p-4 mb-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h6 class="chart-title"><i class="fa-solid fa-bullseye me-2 text-danger"></i>Active Goals</h6>
+    <a href="{% url 'goals' %}" class="btn btn-sm btn-outline-primary">View All</a>
+  </div>
+  <div class="row g-3">
+    {% for goal in goals %}
+    <div class="col-md-4">
+      <div class="goal-mini-card">
+        <div class="goal-type-badge">{{ goal.get_goal_type_display }}</div>
+        <div class="goal-title">{{ goal.title }}</div>
+        <div class="goal-progress">
+          <div class="progress" style="height:6px;">
+            <div class="progress-bar bg-success" style="width:{{ goal.progress_pct }}%"></div>
+          </div>
+          <span class="goal-pct">{{ goal.progress_pct }}%</span>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const chartLabels = {{ chart_labels|safe }};
+const stepsData = {{ steps_data|safe }};
+const weightData = {{ weight_data|safe }};
+const sleepData = {{ sleep_data|safe }};
+const caloriesData = {{ calories_data|safe }};
+const waterData = {{ water_data|safe }};
+
+const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
+const gridColor = () => isDark() ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+const textColor = () => isDark() ? '#94a3b8' : '#64748b';
+
+// Steps Chart
+let stepsChart = new Chart(document.getElementById('stepsChart'), {
+  type: 'bar',
+  data: {
+    labels: chartLabels,
+    datasets: [{
+      label: 'Steps',
+      data: stepsData,
+      backgroundColor: 'rgba(16, 185, 129, 0.75)',
+      borderColor: 'rgba(16, 185, 129, 1)',
+      borderWidth: 1,
+      borderRadius: 6,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: gridColor() }, ticks: { color: textColor(), font: { size: 11 } } },
+      y: { grid: { color: gridColor() }, ticks: { color: textColor(), font: { size: 11 } } }
+    }
+  }
+});
+
+// Sleep Chart
+new Chart(document.getElementById('sleepChart'), {
+  type: 'line',
+  data: {
+    labels: chartLabels,
+    datasets: [{
+      label: 'Sleep (hrs)',
+      data: sleepData,
+      borderColor: '#6366f1',
+      backgroundColor: 'rgba(99,102,241,0.15)',
+      fill: true,
+      tension: 0.4,
+      pointBackgroundColor: '#6366f1',
+      pointRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: gridColor() }, ticks: { color: textColor(), font: { size: 10 }, maxTicksLimit: 7 } },
+      y: { grid: { color: gridColor() }, ticks: { color: textColor(), font: { size: 10 } }, min: 0, max: 12 }
+    }
+  }
+});
+
+// Weight Chart
+new Chart(document.getElementById('weightChart'), {
+  type: 'line',
+  data: {
+    labels: chartLabels,
+    datasets: [{
+      label: 'Weight (kg)',
+      data: weightData,
+      borderColor: '#f59e0b',
+      backgroundColor: 'rgba(245,158,11,0.1)',
+      fill: true,
+      tension: 0.4,
+      pointBackgroundColor: '#f59e0b',
+      pointRadius: 4,
+      spanGaps: true,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: gridColor() }, ticks: { color: textColor(), font: { size: 11 } } },
+      y: { grid: { color: gridColor() }, ticks: { color: textColor(), font: { size: 11 } } }
+    }
+  }
+});
+
+// Chart switching
+const chartDatasets = {
+  steps: { data: stepsData, label: 'Steps', color: 'rgba(16,185,129,0.75)', type: 'bar' },
+  calories: { data: caloriesData, label: 'Calories Intake', color: 'rgba(239,68,68,0.7)', type: 'bar' },
+  water: { data: waterData, label: 'Water (L)', color: 'rgba(59,130,246,0.7)', type: 'bar' },
+};
+function switchChart(btn, key) {
+  document.querySelectorAll('.chart-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const d = chartDatasets[key];
+  stepsChart.config.type = d.type;
+  stepsChart.data.datasets[0].data = d.data;
+  stepsChart.data.datasets[0].label = d.label;
+  stepsChart.data.datasets[0].backgroundColor = d.color;
+  stepsChart.data.datasets[0].borderColor = d.color;
+  stepsChart.update();
+}
+</script>
+{% endblock %}

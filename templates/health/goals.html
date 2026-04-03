@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% block title %}Goals — HealthTrack AI{% endblock %}
+{% block page_title %}Health Goals{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- Goals List -->
+  <div class="col-lg-8">
+    {% if goals %}
+      <div class="goals-grid">
+        {% for goal in goals %}
+        <div class="goal-card goal-status-{{ goal.status }}">
+          <div class="goal-card-header">
+            <div class="goal-type-icon">
+              {% if goal.goal_type == 'weight_loss' %}<i class="fa-solid fa-arrow-trend-down"></i>
+              {% elif goal.goal_type == 'weight_gain' %}<i class="fa-solid fa-arrow-trend-up"></i>
+              {% elif goal.goal_type == 'fitness' %}<i class="fa-solid fa-dumbbell"></i>
+              {% elif goal.goal_type == 'sleep' %}<i class="fa-solid fa-moon"></i>
+              {% else %}<i class="fa-solid fa-apple-whole"></i>{% endif %}
+            </div>
+            <div class="goal-meta">
+              <span class="goal-type-label">{{ goal.get_goal_type_display }}</span>
+              <span class="goal-status-badge status-{{ goal.status }}">{{ goal.get_status_display }}</span>
+            </div>
+            <form method="post" action="{% url 'delete_goal' goal.pk %}" class="ms-auto">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-link btn-sm text-muted p-0" onclick="return confirm('Delete this goal?')">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </form>
+          </div>
+          <h6 class="goal-title mt-2">{{ goal.title }}</h6>
+          {% if goal.description %}<p class="goal-desc text-muted small">{{ goal.description }}</p>{% endif %}
+          <div class="goal-prog-row">
+            <div class="progress flex-grow-1" style="height: 8px; border-radius: 4px;">
+              <div class="progress-bar bg-success" style="width: {{ goal.progress_pct }}%; border-radius: 4px;"></div>
+            </div>
+            <span class="goal-pct-text">{{ goal.progress_pct }}%</span>
+          </div>
+          <div class="goal-footer">
+            {% if goal.target_value and goal.current_value %}
+              <span class="goal-vals">{{ goal.current_value }} / {{ goal.target_value }}</span>
+            {% endif %}
+            {% if goal.target_date %}
+              <span class="goal-deadline"><i class="fa-regular fa-calendar me-1"></i>{{ goal.target_date|date:"M j, Y" }}</span>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state text-center py-5">
+        <i class="fa-solid fa-bullseye fa-3x text-muted mb-3"></i>
+        <h5 class="text-muted">No goals yet</h5>
+        <p class="text-muted">Set your first health goal to stay motivated!</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Add Goal Form -->
+  <div class="col-lg-4">
+    <div class="card-modern p-4">
+      <h6 class="chart-title mb-3"><i class="fa-solid fa-plus-circle me-2 text-primary"></i>Set New Goal</h6>
+      <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label fw-500">Goal Type</label>
+          {{ form.goal_type }}
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-500">Title</label>
+          {{ form.title }}
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-500">Description (optional)</label>
+          {{ form.description }}
+        </div>
+        <div class="row g-2 mb-3">
+          <div class="col-6">
+            <label class="form-label fw-500">Current</label>
+            {{ form.current_value }}
+          </div>
+          <div class="col-6">
+            <label class="form-label fw-500">Target</label>
+            {{ form.target_value }}
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-500">Target Date</label>
+          {{ form.target_date }}
+        </div>
+        <button type="submit" class="btn btn-primary w-100">
+          <i class="fa-solid fa-bullseye me-2"></i>Set Goal
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

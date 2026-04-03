@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% block title %}AI Insights — HealthTrack AI{% endblock %}
+{% block page_title %}AI Health Insights{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="insights-header mb-4">
+  <div class="ai-badge"><i class="fa-solid fa-brain me-2"></i>Powered by AI</div>
+  <h4>Your Personalized Health Analysis</h4>
+  <p class="text-muted">Based on your last <strong>{{ metrics_count }}</strong> logged entries</p>
+</div>
+
+{% if insights %}
+<!-- Insights Grid -->
+<div class="insights-grid mb-4">
+  {% for insight in insights %}
+  <div class="insight-card insight-{{ insight.color }}">
+    <div class="insight-icon">
+      <i class="fa-solid {{ insight.icon }}"></i>
+    </div>
+    <div class="insight-body">
+      <h6 class="insight-title">{{ insight.title }}</h6>
+      <p class="insight-msg">{{ insight.message }}</p>
+    </div>
+    <div class="insight-indicator"></div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Tips Section -->
+{% if tips %}
+<div class="card-modern p-4 mb-4">
+  <h6 class="chart-title mb-3"><i class="fa-solid fa-lightbulb me-2 text-warning"></i>Smart Tips For You</h6>
+  <div class="tips-grid">
+    {% for tip in tips %}
+    <div class="tip-card">{{ tip }}</div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Trend Chart -->
+<div class="card-modern p-4 mb-4">
+  <div class="chart-header mb-3">
+    <h6 class="chart-title"><i class="fa-solid fa-chart-line me-2 text-primary"></i>30-Day Trends</h6>
+    <div class="chart-tabs">
+      <button class="chart-tab active" onclick="switchTrend(this,'steps')">Steps</button>
+      <button class="chart-tab" onclick="switchTrend(this,'sleep')">Sleep</button>
+      <button class="chart-tab" onclick="switchTrend(this,'weight')">Weight</button>
+    </div>
+  </div>
+  <canvas id="trendChart" height="100"></canvas>
+</div>
+
+<!-- Score Card -->
+<div class="card-modern p-4 mb-4">
+  <h6 class="chart-title mb-4"><i class="fa-solid fa-star me-2 text-warning"></i>Health Score Breakdown</h6>
+  <div class="score-grid">
+    <div class="score-item">
+      <div class="score-circle score-green">
+        {% with s=profile.target_steps %}A{% endwith %}
+      </div>
+      <div class="score-label">Activity</div>
+    </div>
+    <div class="score-item">
+      <div class="score-circle score-blue">S</div>
+      <div class="score-label">Sleep</div>
+    </div>
+    <div class="score-item">
+      <div class="score-circle score-teal">H</div>
+      <div class="score-label">Hydration</div>
+    </div>
+    <div class="score-item">
+      <div class="score-circle score-orange">N</div>
+      <div class="score-label">Nutrition</div>
+    </div>
+  </div>
+  <p class="text-muted small text-center mt-3">Scores update as you log more data consistently.</p>
+</div>
+
+{% else %}
+<div class="empty-insights">
+  <i class="fa-solid fa-brain fa-4x text-muted mb-4"></i>
+  <h5>No insights yet</h5>
+  <p class="text-muted">Log your health metrics for at least a few days to unlock personalized AI insights.</p>
+  <a href="{% url 'log_metrics' %}" class="btn btn-primary mt-3">
+    <i class="fa-solid fa-plus me-2"></i>Log First Entry
+  </a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const trendData = {{ trend_data|safe }};
+const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
+const gc = () => isDark() ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+const tc = () => isDark() ? '#94a3b8' : '#64748b';
+
+const colors = {
+  steps: { border: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  sleep: { border: '#6366f1', bg: 'rgba(99,102,241,0.12)' },
+  weight: { border: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+};
+const labels = { steps: 'Steps', sleep: 'Sleep (hrs)', weight: 'Weight (kg)' };
+
+let currentKey = 'steps';
+let trendChart = new Chart(document.getElementById('trendChart'), {
+  type: 'line',
+  data: {
+    labels: trendData.dates,
+    datasets: [{
+      label: 'Steps',
+      data: trendData.steps,
+      borderColor: '#10b981',
+      backgroundColor: 'rgba(16,185,129,0.12)',
+      fill: true, tension: 0.4,
+      pointBackgroundColor: '#10b981', pointRadius: 4,
+      spanGaps: true,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: gc() }, ticks: { color: tc(), font: { size: 11 } } },
+      y: { grid: { color: gc() }, ticks: { color: tc(), font: { size: 11 } } }
+    }
+  }
+});
+
+function switchTrend(btn, key) {
+  document.querySelectorAll('.chart-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentKey = key;
+  trendChart.data.datasets[0].data = trendData[key];
+  trendChart.data.datasets[0].label = labels[key];
+  trendChart.data.datasets[0].borderColor = colors[key].border;
+  trendChart.data.datasets[0].backgroundColor = colors[key].bg;
+  trendChart.data.datasets[0].pointBackgroundColor = colors[key].border;
+  trendChart.update();
+}
+</script>
+{% endblock %}

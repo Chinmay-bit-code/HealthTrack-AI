@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block title %}Profile — HealthTrack AI{% endblock %}
+{% block page_title %}My Profile{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+  <!-- Profile Card -->
+  <div class="col-lg-4">
+    <div class="card-modern text-center p-4">
+      <div class="profile-avatar-large mb-3">
+        {% if profile.avatar %}
+          <img src="{{ profile.avatar.url }}" alt="avatar" class="rounded-circle" width="100" height="100" style="object-fit:cover;">
+        {% else %}
+          <div class="avatar-placeholder-large">
+            {{ request.user.first_name|first|upper }}{{ request.user.last_name|first|upper }}
+          </div>
+        {% endif %}
+      </div>
+      <h4 class="mb-1">{{ request.user.get_full_name|default:request.user.username }}</h4>
+      <p class="text-muted small mb-3">{{ request.user.email }}</p>
+      {% if profile.bmi %}
+        <div class="bmi-badge bmi-{{ profile.bmi_category|lower }}">
+          BMI {{ profile.bmi }} — {{ profile.bmi_category }}
+        </div>
+      {% endif %}
+      <div class="profile-stats mt-3">
+        <div class="profile-stat">
+          <span class="pstat-val">{{ request.user.metrics.count }}</span>
+          <span class="pstat-label">Logs</span>
+        </div>
+        <div class="profile-stat">
+          <span class="pstat-val">{{ request.user.goals.count }}</span>
+          <span class="pstat-label">Goals</span>
+        </div>
+        <div class="profile-stat">
+          <span class="pstat-val">{{ profile.target_steps|floatformat:0 }}</span>
+          <span class="pstat-label">Step Goal</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Form -->
+  <div class="col-lg-8">
+    <div class="card-modern p-4">
+      <h5 class="card-modern-title mb-4"><i class="fa-solid fa-sliders me-2 text-primary"></i>Health Settings</h5>
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label fw-500">Age</label>
+            {{ form.age }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-500">Gender</label>
+            {{ form.gender }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-500">Height (cm)</label>
+            {{ form.height_cm }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-500"><i class="fa-solid fa-weight text-warning me-1"></i>Target Weight (kg)</label>
+            {{ form.target_weight }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-500"><i class="fa-solid fa-walking text-success me-1"></i>Daily Step Goal</label>
+            {{ form.target_steps }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-500"><i class="fa-solid fa-fire text-danger me-1"></i>Calorie Target</label>
+            {{ form.target_calories }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-500"><i class="fa-solid fa-moon text-info me-1"></i>Sleep Target (hrs)</label>
+            {{ form.target_sleep_hours }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-500"><i class="fa-solid fa-tint text-primary me-1"></i>Water Target (L)</label>
+            {{ form.target_water_liters }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-500">Profile Photo</label>
+            {{ form.avatar }}
+          </div>
+        </div>
+        <div class="mt-4 d-flex gap-2">
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="fa-solid fa-save me-2"></i>Save Changes
+          </button>
+          <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary px-4">Cancel</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

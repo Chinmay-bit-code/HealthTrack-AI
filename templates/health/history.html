@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}History — HealthTrack AI{% endblock %}
+{% block page_title %}Health History{% endblock %}
+
+{% block content %}
+<div class="card-modern p-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h5 class="mb-0"><i class="fa-solid fa-clock-rotate-left me-2 text-primary"></i>All Logged Entries</h5>
+    <a href="{% url 'log_metrics' %}" class="btn btn-primary btn-sm">
+      <i class="fa-solid fa-plus me-1"></i>Log Today
+    </a>
+  </div>
+
+  {% if metrics %}
+  <div class="table-responsive">
+    <table class="table table-hover history-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th><i class="fa-solid fa-person-walking text-success"></i> Steps</th>
+          <th><i class="fa-solid fa-fire text-danger"></i> Cal In</th>
+          <th><i class="fa-solid fa-fire-flame text-orange"></i> Cal Burned</th>
+          <th><i class="fa-solid fa-weight-scale text-warning"></i> Weight</th>
+          <th><i class="fa-solid fa-heart-pulse text-red"></i> HR</th>
+          <th><i class="fa-solid fa-moon text-info"></i> Sleep</th>
+          <th><i class="fa-solid fa-droplet text-primary"></i> Water</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in metrics %}
+        <tr>
+          <td class="fw-500">{{ m.date|date:"M j, Y" }}</td>
+          <td>
+            {% if m.steps %}
+              <span class="metric-pill pill-green">{{ m.steps|floatformat:0 }}</span>
+            {% else %}<span class="text-muted">—</span>{% endif %}
+          </td>
+          <td>{{ m.calories_intake|default:"—" }}</td>
+          <td>{{ m.calories_burned|default:"—" }}</td>
+          <td>{% if m.weight %}{{ m.weight }} kg{% else %}—{% endif %}</td>
+          <td>{% if m.heart_rate %}<span class="metric-pill pill-red">{{ m.heart_rate }}</span>{% else %}—{% endif %}</td>
+          <td>
+            {% if m.sleep_hours %}
+              <span class="metric-pill pill-purple">{{ m.sleep_hours }}h</span>
+            {% else %}—{% endif %}
+          </td>
+          <td>{% if m.water_liters %}{{ m.water_liters }}L{% else %}—{% endif %}</td>
+          <td class="text-muted small">{{ m.notes|truncatechars:30|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state text-center py-5">
+    <i class="fa-solid fa-clock-rotate-left fa-3x text-muted mb-3"></i>
+    <h5 class="text-muted">No entries yet</h5>
+    <p class="text-muted">Start logging your health metrics to see history here.</p>
+    <a href="{% url 'log_metrics' %}" class="btn btn-primary mt-2">Log First Entry</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
